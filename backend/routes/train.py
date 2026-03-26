@@ -4,10 +4,14 @@ import os
 import uuid
 from flask import Blueprint, request, jsonify, current_app
 from ml_engine.pipeline import run_pipeline
+from backend import db
+from backend.utils.auth_helper import token_required
+from backend.models.job import TrainingJob
 
 train_bp= Blueprint('train',__name__)
 @train_bp.route('/train', methods=['POST'])
-def train_model():
+@token_required
+def train_model(current_user):
     """
     Receives file_id and target_col from React.
     Finds the uploaded CSV, runs the full ML pipeline,
@@ -45,7 +49,22 @@ def train_model():
         models_dir = models_dir
     )
     
-    # Step 6: Return results or error
+    # Step 6: Saving job to database
+    job = TrainingJob(
+        job_id     = job_id,
+        user_id    = current_user.id,
+        filename   = filename,
+        target_col = target_col,
+        task_type  = result['task'],
+        status     = 'completed',
+        best_model = result['best_model'],
+        model_path = result['model_path'],
+    )
+    job.set_metrics(result['results'])
+    db.session.add(job)
+    db.session.commit()
+    
+    # Step 7: Return results or error
     if result['status']=='failed':
         return jsonify({'error':result['error']}),500
     return jsonify({

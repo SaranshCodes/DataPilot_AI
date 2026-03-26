@@ -14,8 +14,8 @@ class TrainingJob(db.Model):
     best_model   = db.Column(db.String(100))
     model_path   = db.Column(db.String(255))
     metrics_json = db.Column(db.Text)
-    created_at   = db.Column(db.DateTime, default=datetime.timezone.utcnow)
-    def set_metircs(self, results_list):
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    def set_metrics(self, results_list):
         self.metrics_json = json.dumps(results_list)
     def get_metrics(self):
         return json.loads(self.metrics_json) if self.metrics_json else []

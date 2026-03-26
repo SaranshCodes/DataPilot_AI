@@ -3,11 +3,13 @@
 import os
 from flask import Blueprint, request, jsonify, current_app
 from ml_engine.predictor import predict
+from backend.utils.auth_helper import token_required
 
 predict_bp = Blueprint('predict', __name__)
 
 @predict_bp.route('/predict', methods=['POST'])
-def make_prediction():
+@token_required
+def make_prediction(current_user):
     """
     Receives job_id + input_data from React.
     Loads the saved model for that job and returns prediction.

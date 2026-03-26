@@ -6,7 +6,7 @@ from flask import request, jsonify, current_app
 def generate_token(user_id):
     payload = {
         'user_id':user_id,
-        'exp': datetime.timezone.utcnow() +timedelta(hours=24)
+        'exp': datetime.utcnow() +timedelta(hours=24)
     }
     return jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
 

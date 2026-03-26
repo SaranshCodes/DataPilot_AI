@@ -33,6 +33,8 @@ def create_app():
     
     # Create all database tables on first run
     with app.app_context():
+        from backend.models.user import User
+        from backend.models.job import TrainingJob
         db.create_all()
     
     return app
