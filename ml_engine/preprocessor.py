@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 def preprocess(df,target_col):
     '''
     Takes a raw dataframe and target column name.
-    Returns: x_train, x_test, y_train, y_test, feature_names
+    Returns: x_train, x_test, y_train, y_test, feature_names, scaler, original_features
     '''
     
     # Step 1: Drop columns that are useless for ML
@@ -25,6 +25,12 @@ def preprocess(df,target_col):
     X= df.drop(columns= [target_col])
     y=df[target_col]
     
+    # Step 1b: Drop high-cardinality categoricals BEFORE encoding
+    HIGH_CARDINALITY_THRESHOLD = 20
+    for col in X.columns:
+        if X[col].dtype == 'object' and X[col].nunique() > HIGH_CARDINALITY_THRESHOLD:
+            X = X.drop(columns=[col])
+        
     # Step 3: Fill missing values
     
     # Here we have done that for numerical columns we fill missing values with median and for categorical columns we fill missing values with mode.
@@ -33,6 +39,22 @@ def preprocess(df,target_col):
             X[col]=X[col].fillna(X[col].median())
         else:
             X[col]=X[col].fillna(X[col].mode()[0])
+    
+    # Step 3b: Capture original feature metadata BEFORE encoding
+    # This is used by the Predict page to show user-friendly inputs
+    original_features = []
+    for col in X.columns:
+        if X[col].dtype == 'object':
+            original_features.append({
+                'name': col,
+                'type': 'categorical',
+                'categories': sorted(X[col].unique().tolist())
+            })
+        else:
+            original_features.append({
+                'name': col,
+                'type': 'numerical',
+            })
     
     # Step 4 : Encode categorical columns
     # Convert text categories into numbers that sklearn can understand
@@ -53,7 +75,4 @@ def preprocess(df,target_col):
         X_scaled,y ,test_size=0.2, random_state=42
     )
     
-    return X_train, X_test, y_train, y_test, feature_names,scaler
-    
-        
-    
+    return X_train, X_test, y_train, y_test, feature_names, scaler, original_features

@@ -74,5 +74,6 @@ def train_model(current_user):
         'best_model' : result['best_model'],
         'results'    : result['results'],
         'features'   : result['features'],
+        'original_features': result.get('original_features', []),
         'model_path' : result['model_path'],
     }), 200

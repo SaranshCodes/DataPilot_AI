@@ -32,13 +32,14 @@ function Upload() {
       const res = await client.post("/upload", formData);
       setColumns(res.data.columns);
       setUploadData(res.data);
+      localStorage.setItem("uploadData", JSON.stringify(res.data));
     } catch (err) {
       setError(err.response?.data?.error || "Upload failed");
     } finally {
       setLoading(false);
     }
   };
-  //Starting training with selected taret column
+  //Starting training with selected target column
   const handleTrain = async () => {
     if (!targetCol) {
       setError("Please select a target column");
@@ -127,6 +128,25 @@ function Upload() {
           )}
         </div>
 
+        {uploadData && (
+          <div style={{ textAlign: "right", marginBottom: "12px" }}>
+            <button
+              style={{
+                padding: "8px 18px",
+                background: "#805ad5",
+                color: "#fff",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: "600",
+              }}
+              onClick={() => navigate("/eda")}
+            >
+              📊 Explore Data
+            </button>
+          </div>
+        )}
         {/* Column selector */}
         {columns.length > 0 && (
           <div style={styles.card}>

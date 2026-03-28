@@ -11,7 +11,25 @@ from ml_engine.trainer import train_all_models
 from ml_engine.evaluator import evaluate_All_models
 
 def run_pipeline(csv_path, target_col, job_id, models_dir='storage/models'):
-    
+    """
+    Full DataPilot pipeline in one function call.
+
+    Args:
+        csv_path   : path to the uploaded CSV file
+        target_col : name of the column to predict
+        job_id     : unique ID for this training job (used to name saved model)
+        models_dir : folder where trained models are saved
+
+    Returns a dict with:
+        - task              : 'classification' or 'regression'
+        - results           : list of model metrics (sorted best to worst)
+        - best_model        : name of the winning model
+        - model_path        : path to the saved .pkl file
+        - features          : list of encoded feature column names used
+        - original_features : list of original feature metadata (name, type, categories)
+        - status            : 'completed' or 'failed'
+        - error             : error message if status is 'failed'
+    """
     try:
         
         # --- Step 1: Load the CSV ---------
@@ -25,7 +43,7 @@ def run_pipeline(csv_path, target_col, job_id, models_dir='storage/models'):
         
         # ---- Step 3 : Preprocess ------
         print(f'[Pipeline] Preprocessing data...')
-        X_train, X_test, y_train,y_test, feature_names, scaler = preprocess(df, target_col)
+        X_train, X_test, y_train, y_test, feature_names, scaler, original_features = preprocess(df, target_col)
         print(f'[Pipeline] Preprocessing done - {len(feature_names)} features')
         
         # ----- Step 4: Train all models ------
@@ -44,13 +62,15 @@ def run_pipeline(csv_path, target_col, job_id, models_dir='storage/models'):
         model_path = os.path.join(models_dir, f'model_{job_id}.pkl')
         
         
-        # Save both the model and the scaler together
-        # scaler is needed later for transforming new data before prediction
+        # Save the model, scaler, feature names, original features, and task together
+        # All of these are needed later for prediction
         joblib.dump({
             'model' : best_model,
             'scaler': scaler,
             'feature_names': feature_names,
-            'task': task,}, model_path)
+            'original_features': original_features,
+            'task': task,
+        }, model_path)
         
         print(f'[Pipeline] Best model {best_name} saved to {model_path}')
         
@@ -61,7 +81,8 @@ def run_pipeline(csv_path, target_col, job_id, models_dir='storage/models'):
             'results': results,
             'best_model': best_name,    
             'model_path': model_path,
-            'features': feature_names
+            'features': feature_names,
+            'original_features': original_features,
         }
         
     except Exception as e:
@@ -71,21 +92,3 @@ def run_pipeline(csv_path, target_col, job_id, models_dir='storage/models'):
             'status': 'failed',
             'error': str(e)
         }
-    """
-    Full DataPilot pipeline in one function call.
-
-    Args:
-        csv_path   : path to the uploaded CSV file
-        target_col : name of the column to predict
-        job_id     : unique ID for this training job (used to name saved model)
-        models_dir : folder where trained models are saved
-
-    Returns a dict with:
-        - task       : 'classification' or 'regression'
-        - results    : list of model metrics (sorted best to worst)
-        - best_model : name of the winning model
-        - model_path : path to the saved .pkl file
-        - features   : list of feature column names used
-        - status     : 'completed' or 'failed'
-        - error      : error message if status is 'failed'
-    """

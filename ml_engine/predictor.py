@@ -11,11 +11,11 @@ def predict(model_path, input_data):
     Args:
         model_path : path to the saved .pkl file
         input_data : dict of feature values from the user
-                     e.g. {'Pclass': 1, 'Sex': 'female', 'Age': 28}
+                     e.g. {'Pclass': 1, 'Sex': 'male', 'Age': 28}
 
     Returns a dict with:
         - prediction     : the predicted value (0/1 or a number)
-        - label          : human-readable result e.g. 'Survived' / 'Did not survive'
+        - label          : human-readable result
         - confidence     : confidence % (classification only)
         - model_used     : name of the model that made the prediction
         - task           : 'classification' or 'regression'
@@ -28,25 +28,49 @@ def predict(model_path, input_data):
         scaler = bundle['scaler']
         feature_names = bundle['feature_names']
         task = bundle['task']
+        original_features = bundle.get('original_features', [])
         
-        # Step 2: Convert input dict to a DataFrame
-        input_df = pd.DataFrame([input_data])
+        # Step 2: Build a row of zeros matching the encoded feature columns
+        input_df = pd.DataFrame(0, index=[0], columns=feature_names, dtype=float)
         
-        # Step 3: Encode Categorical columns
-        # Same encoding used during training 
-        input_df = pd.get_dummies(input_df , drop_first=True)
+        if original_features:
+            # ---- NEW approach: manually encode using saved metadata ----
+            # This avoids the broken pd.get_dummies-on-single-row problem
+            for feat in original_features:
+                name = feat['name']
+                if name not in input_data:
+                    continue
+                value = input_data[name]
+                
+                if feat['type'] == 'numerical':
+                    # Numerical: set value directly (column name is unchanged)
+                    if name in feature_names:
+                        input_df[name] = float(value)
+                else:
+                    # Categorical: find the matching dummy column and set it to 1
+                    # During training, pd.get_dummies(drop_first=True) creates
+                    # columns like "Sex_male" for all categories except the first
+                    # (alphabetically). If the user picks the dropped-first category,
+                    # all dummy columns stay 0 — which is correct.
+                    dummy_col = f"{name}_{value}"
+                    if dummy_col in feature_names:
+                        input_df[dummy_col] = 1
+                    # else: value is the dropped-first category → all dummies stay 0 ✓
+        else:
+            # ---- FALLBACK for models saved before this update ----
+            temp_df = pd.DataFrame([input_data])
+            temp_df = pd.get_dummies(temp_df, drop_first=True)
+            for col in temp_df.columns:
+                if col in feature_names:
+                    input_df[col] = temp_df[col].values[0]
         
-        # Step 4: Align columns with training features
-        # reindex fills missing columns with 0 so model doesnt crash
-        input_df = input_df.reindex(columns=feature_names, fill_value=0)
-        
-        # Step 5: Scale using the SAME scaler from training
+        # Step 3: Scale using the SAME scaler from training
         input_scaled = scaler.transform(input_df)
         
-        # Step 6: Make Predictions
+        # Step 4: Make Predictions
         prediction = model.predict(input_scaled)[0]
         
-        # Step 7: Build result based on task type
+        # Step 5: Build result based on task type
         if task =='classification':
             try:
                 proba= model.predict_proba(input_scaled)[0]

@@ -3,6 +3,7 @@ import Login from './pages/Login';
 import Upload from './pages/Upload';
 import Results from './pages/Results';
 import Predict from './pages/Predict';
+import EDA from './pages/EDA';
 
 // A wrapper component that checks for token at render time (not just on mount)
 function ProtectedRoute({ children }) {
@@ -20,6 +21,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Upload />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/eda"
+          element={
+            <ProtectedRoute>
+              <EDA />
             </ProtectedRoute>
           }
         />
