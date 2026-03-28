@@ -4,24 +4,40 @@ import Upload from './pages/Upload';
 import Results from './pages/Results';
 import Predict from './pages/Predict';
 
-function App() {
+// A wrapper component that checks for token at render time (not just on mount)
+function ProtectedRoute({ children }) {
   const token = localStorage.getItem('token');
+  return token ? children : <Navigate to="/" />;
+}
 
+function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
         <Route
           path="/upload"
-          element={token ? <Upload /> : <Navigate to="/" />}
+          element={
+            <ProtectedRoute>
+              <Upload />
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/results"
-          element={token ? <Results /> : <Navigate to="/" />}
+          element={
+            <ProtectedRoute>
+              <Results />
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/predict"
-          element={token ? <Predict /> : <Navigate to="/" />}
+          element={
+            <ProtectedRoute>
+              <Predict />
+            </ProtectedRoute>
+          }
         />
       </Routes>
     </BrowserRouter>
