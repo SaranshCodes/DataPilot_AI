@@ -49,7 +49,11 @@ def train_model(current_user):
         models_dir = models_dir
     )
     
-    # Step 6: Saving job to database
+    # Step 6: Check for pipeline failure BEFORE accessing result keys
+    if result['status']=='failed':
+        return jsonify({'error':result['error']}),500
+    
+    # Step 7: Saving job to database
     job = TrainingJob(
         job_id     = job_id,
         user_id    = current_user.id,
@@ -64,9 +68,7 @@ def train_model(current_user):
     db.session.add(job)
     db.session.commit()
     
-    # Step 7: Return results or error
-    if result['status']=='failed':
-        return jsonify({'error':result['error']}),500
+    # Step 8: Return results
     return jsonify({
         'status': 'success',
         'job_id': job_id,

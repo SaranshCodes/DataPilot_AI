@@ -22,7 +22,22 @@ def preprocess(df,target_col):
     df=df.drop(columns= cols_to_drop)
     
     # Step 2: Separate features(X) and target(y)
-    X= df.drop(columns= [target_col])
+    X= df.drop(columns= [target_col]).copy()
+    # Step 1c: Convert numeric-looking string columns to float
+    for col in X.columns:
+        if X[col].dtype == 'object':
+            # Strip whitespace first — common issue with exported CSVs
+            X[col] = X[col].str.strip()
+            # Replace empty strings with NaN (e.g. TotalCharges in churn datasets)
+            X[col] = X[col].replace('', np.nan)
+            try:
+                converted = pd.to_numeric(X[col], errors='coerce')
+                # Only convert if more than 80% of non-null values became numeric
+                non_null_count = X[col].notna().sum()
+                if non_null_count > 0 and converted.notna().sum() / non_null_count > 0.8:
+                    X[col] = converted
+            except:
+                pass
     y=df[target_col]
     
     # Step 1b: Drop high-cardinality categoricals BEFORE encoding
@@ -35,10 +50,10 @@ def preprocess(df,target_col):
     
     # Here we have done that for numerical columns we fill missing values with median and for categorical columns we fill missing values with mode.
     for col in X.columns:
-        if X[col].dtype in ['float64','int64']:
+        if pd.api.types.is_numeric_dtype(X[col]):
             X[col]=X[col].fillna(X[col].median())
         else:
-            X[col]=X[col].fillna(X[col].mode()[0])
+            X[col]=X[col].fillna(X[col].mode()[0] if not X[col].mode().empty else 'unknown')
     
     # Step 3b: Capture original feature metadata BEFORE encoding
     # This is used by the Predict page to show user-friendly inputs
@@ -60,8 +75,8 @@ def preprocess(df,target_col):
     # Convert text categories into numbers that sklearn can understand
     X=pd.get_dummies(X, drop_first=True)
     
-    # Step 5: Encode target column if it is text
-    if y.dtype == 'object':
+    # Step 5: Encode target column if it is non-numeric (e.g. 'Yes'/'No')
+    if not pd.api.types.is_numeric_dtype(y):
         le= LabelEncoder()
         y=le.fit_transform(y)
     
