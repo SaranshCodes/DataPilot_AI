@@ -1,35 +1,42 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import client from "../api/client";
+import DashboardLayout from "../components/DashboardLayout";
+import { HiOutlineExclamationCircle } from "react-icons/hi";
 
 function Predict() {
   const navigate = useNavigate();
   const trainResult = JSON.parse(localStorage.getItem("trainResult") || "null");
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
   const [formData, setFormData] = useState({});
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   if (!trainResult) {
-    navigate("/upload");
-    return null;
+    return (
+      <DashboardLayout>
+        <div style={styles.emptyState}>
+          <div style={styles.emptyIcon}>🎯</div>
+          <p style={styles.emptyTitle}>No model trained yet</p>
+          <p style={styles.emptyDesc}>Train a model first to make predictions</p>
+          <button style={styles.actionBtn} onClick={() => navigate('/upload')}>
+            Go to Upload
+          </button>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   const { job_id, best_model, features, original_features } = trainResult;
 
-  // Use original_features if available (new format), fall back to encoded features
   const useOriginalFeatures =
     original_features && original_features.length > 0;
 
-  // Update form field value
   const handleChange = (feature, value) => {
     setFormData((prev) => ({ ...prev, [feature]: value }));
   };
 
-  // Submit prediction request
   const handlePredict = async () => {
-    // Validate that all fields are filled
     const requiredFields = useOriginalFeatures
       ? original_features.map((f) => f.name)
       : features;
@@ -45,7 +52,6 @@ function Predict() {
     setError("");
     setResult(null);
 
-    // Build processed data with correct types
     const processedData = {};
     if (useOriginalFeatures) {
       original_features.forEach((feat) => {
@@ -55,7 +61,6 @@ function Predict() {
           feat.type === "numerical" ? Number(val) : val;
       });
     } else {
-      // Fallback for old trainResult without original_features
       Object.keys(formData).forEach((key) => {
         const val = formData[key];
         processedData[key] = isNaN(val) ? val : Number(val);
@@ -75,40 +80,28 @@ function Predict() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/");
-  };
-
   return (
-    <div style={styles.page}>
-      {/* Navbar */}
-      <div style={styles.nav}>
-        <span style={styles.navLogo}>🚀 DataPilot AI</span>
-        <div style={styles.navRight}>
-          <button style={styles.navBtn} onClick={() => navigate("/upload")}>
-            New Dataset
-          </button>
-          <button style={styles.navBtn} onClick={() => navigate("/results")}>
-            Results
-          </button>
-          <span style={styles.navEmail}>{user.email}</span>
-          <button style={styles.logoutBtn} onClick={handleLogout}>
-            Logout
-          </button>
+    <DashboardLayout>
+      <div style={styles.wrapper}>
+        <div style={styles.header}>
+          <h2 style={styles.heading}>Make a Prediction</h2>
+          <p style={styles.subheading}>
+            Using <strong style={{ color: '#10B981' }}>{best_model}</strong> — enter values for each feature below
+          </p>
         </div>
-      </div>
 
-      <div style={styles.content}>
-        <h2 style={styles.heading}>Make a Prediction</h2>
-        <p style={styles.subheading}>
-          Using <strong>{best_model}</strong> — enter values for each feature
-          below
-        </p>
+        {/* Error alert */}
+        {error && (
+          <div style={styles.error}>
+            <HiOutlineExclamationCircle size={18} style={{ flexShrink: 0, marginTop: '1px' }} />
+            <div>
+              <div style={styles.errorTitle}>Error</div>
+              <div>{error}</div>
+            </div>
+          </div>
+        )}
 
-        {error && <div style={styles.error}>{error}</div>}
-
-        {/* Dynamic input form — one field per feature */}
+        {/* Input form */}
         <div style={styles.card}>
           <h3 style={styles.cardTitle}>Input Features</h3>
           <div style={styles.grid}>
@@ -117,8 +110,12 @@ function Predict() {
                   <div key={feat.name} style={styles.field}>
                     <label style={styles.label}>
                       {feat.name}
-                      <span style={styles.typeBadge}>
-                        {feat.type === "categorical" ? "📋" : "🔢"}
+                      <span style={{
+                        ...styles.typeBadge,
+                        background: feat.type === 'categorical' ? 'rgba(59,130,246,0.1)' : 'rgba(16,185,129,0.1)',
+                        color: feat.type === 'categorical' ? '#3B82F6' : '#10B981',
+                      }}>
+                        {feat.type === "categorical" ? "CAT" : "NUM"}
                       </span>
                     </label>
                     {feat.type === "categorical" ? (
@@ -164,176 +161,295 @@ function Predict() {
           </div>
 
           <button
-            style={{ ...styles.predictBtn, opacity: loading ? 0.7 : 1 }}
+            style={{
+              ...styles.predictBtn,
+              opacity: loading ? 0.7 : 1,
+              cursor: loading ? 'not-allowed' : 'pointer',
+            }}
             onClick={handlePredict}
             disabled={loading}
           >
-            {loading ? "Predicting..." : "🎯 Predict"}
+            {loading ? (
+              <span style={styles.loadingRow}>
+                <div style={styles.spinnerSmall} />
+                Predicting...
+              </span>
+            ) : (
+              "🎯 Predict"
+            )}
           </button>
         </div>
 
-        {/* Prediction result */}
+        {/* Result */}
         {result && (
           <div style={styles.resultCard}>
+            <div style={styles.resultGlow} />
             <div style={styles.resultIcon}>🎯</div>
             <div style={styles.resultLabel}>Prediction Result</div>
             <div style={styles.resultValue}>{result.prediction}</div>
+
             {result.confidence && (
-              <div style={styles.confidence}>
-                Confidence: <strong>{result.confidence}%</strong>
+              <div style={styles.confidenceWrap}>
+                <div style={styles.confidenceLabel}>
+                  Confidence: <strong>{result.confidence}%</strong>
+                </div>
+                <div style={styles.confidenceBarBg}>
+                  <div style={{
+                    ...styles.confidenceBar,
+                    width: `${result.confidence}%`,
+                  }} />
+                </div>
               </div>
             )}
+
             <div style={styles.modelUsed}>Model: {result.model_used}</div>
+
             <button
               style={styles.resetBtn}
-              onClick={() => {
-                setResult(null);
-                setFormData({});
-              }}
+              onClick={() => { setResult(null); setFormData({}); }}
             >
               Predict Again
             </button>
           </div>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
 
 const styles = {
-  page: { minHeight: "100vh", background: "#f0f4f8" },
-  nav: {
-    background: "#1a202c",
-    padding: "0 32px",
-    height: "60px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
+  wrapper: { maxWidth: '800px', margin: '0 auto' },
+  header: { marginBottom: '24px' },
+  heading: {
+    fontSize: '28px',
+    fontWeight: '700',
+    color: '#E5E7EB',
+    marginBottom: '6px',
+    letterSpacing: '-0.02em',
   },
-  navLogo: { color: "#fff", fontWeight: "700", fontSize: "18px" },
-  navRight: { display: "flex", alignItems: "center", gap: "12px" },
-  navBtn: {
-    background: "transparent",
-    border: "1px solid #4a5568",
-    color: "#a0aec0",
-    padding: "6px 14px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontSize: "13px",
-  },
-  navEmail: { color: "#a0aec0", fontSize: "13px" },
-  logoutBtn: {
-    background: "transparent",
-    border: "1px solid #4a5568",
-    color: "#a0aec0",
-    padding: "6px 14px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontSize: "13px",
-  },
-  content: { maxWidth: "760px", margin: "40px auto", padding: "0 20px" },
-  heading: { fontSize: "26px", fontWeight: "700", marginBottom: "6px" },
-  subheading: { color: "#718096", marginBottom: "24px" },
+  subheading: { color: '#6B7280', fontSize: '15px' },
+
+  /* Error */
   error: {
-    background: "#fff5f5",
-    color: "#c53030",
-    padding: "10px 14px",
-    borderRadius: "8px",
-    marginBottom: "16px",
-    fontSize: "13px",
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '12px',
+    background: '#1C1017',
+    borderLeft: '3px solid #EF4444',
+    color: '#FCA5A5',
+    padding: '14px 18px',
+    borderRadius: '8px',
+    marginBottom: '20px',
+    fontSize: '13px',
+    lineHeight: '1.5',
   },
+  errorTitle: {
+    fontWeight: '600',
+    color: '#F87171',
+    marginBottom: '2px',
+    fontSize: '14px',
+  },
+
+  /* Card */
   card: {
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "24px",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-    marginBottom: "20px",
+    background: '#111827',
+    borderRadius: '12px',
+    padding: '28px',
+    border: '1px solid #1F2937',
+    marginBottom: '24px',
   },
   cardTitle: {
-    fontSize: "16px",
-    fontWeight: "600",
-    marginBottom: "20px",
-    color: "#2d3748",
+    fontSize: '17px',
+    fontWeight: '600',
+    marginBottom: '24px',
+    color: '#E5E7EB',
   },
+
+  /* Grid */
   grid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "16px",
-    marginBottom: "20px",
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '18px',
+    marginBottom: '24px',
   },
-  field: { display: "flex", flexDirection: "column" },
+  field: { display: 'flex', flexDirection: 'column' },
   label: {
-    fontSize: "12px",
-    fontWeight: "600",
-    color: "#4a5568",
-    marginBottom: "6px",
-    textTransform: "uppercase",
-    letterSpacing: "0.04em",
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
+    fontSize: '12px',
+    fontWeight: '600',
+    color: '#9CA3AF',
+    marginBottom: '6px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
   },
   typeBadge: {
-    fontSize: "11px",
+    fontSize: '9px',
+    fontWeight: '700',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    letterSpacing: '0.06em',
   },
   input: {
-    padding: "10px 12px",
-    border: "1.5px solid #e2e8f0",
-    borderRadius: "8px",
-    fontSize: "14px",
-    outline: "none",
+    padding: '11px 14px',
+    background: '#1E293B',
+    border: '1.5px solid #1F2937',
+    borderRadius: '8px',
+    fontSize: '14px',
+    color: '#E5E7EB',
+    outline: 'none',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
   },
   select: {
-    padding: "10px 12px",
-    border: "1.5px solid #e2e8f0",
-    borderRadius: "8px",
-    fontSize: "14px",
-    outline: "none",
-    background: "#fff",
-    cursor: "pointer",
+    padding: '11px 14px',
+    background: '#1E293B',
+    border: '1.5px solid #1F2937',
+    borderRadius: '8px',
+    fontSize: '14px',
+    color: '#E5E7EB',
+    outline: 'none',
+    cursor: 'pointer',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
   },
   predictBtn: {
-    width: "100%",
-    padding: "14px",
-    background: "#3182ce",
-    color: "#fff",
-    border: "none",
-    borderRadius: "8px",
-    fontSize: "15px",
-    fontWeight: "600",
-    cursor: "pointer",
+    width: '100%',
+    padding: '14px',
+    background: '#10B981',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '15px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    boxShadow: '0 0 20px rgba(16,185,129,0.15)',
   },
+  loadingRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '10px',
+  },
+  spinnerSmall: {
+    width: '18px',
+    height: '18px',
+    border: '2px solid rgba(255,255,255,0.3)',
+    borderTop: '2px solid #fff',
+    borderRadius: '50%',
+    animation: 'spin 0.8s linear infinite',
+  },
+
+  /* Result card */
   resultCard: {
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "32px",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-    textAlign: "center",
+    position: 'relative',
+    background: '#111827',
+    borderRadius: '16px',
+    padding: '40px 32px',
+    border: '1px solid #10B981',
+    textAlign: 'center',
+    overflow: 'hidden',
+    boxShadow: '0 0 40px rgba(16,185,129,0.1)',
   },
-  resultIcon: { fontSize: "48px", marginBottom: "12px" },
+  resultGlow: {
+    position: 'absolute',
+    top: '-60px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: '300px',
+    height: '200px',
+    background: 'radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%)',
+    pointerEvents: 'none',
+  },
+  resultIcon: {
+    fontSize: '48px',
+    marginBottom: '12px',
+    position: 'relative',
+  },
   resultLabel: {
-    fontSize: "13px",
-    color: "#718096",
-    marginBottom: "8px",
-    textTransform: "uppercase",
-    letterSpacing: "0.06em",
+    fontSize: '12px',
+    color: '#6B7280',
+    marginBottom: '8px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+    fontWeight: '600',
+    position: 'relative',
   },
   resultValue: {
-    fontSize: "52px",
-    fontWeight: "800",
-    color: "#3182ce",
-    marginBottom: "8px",
+    fontSize: '56px',
+    fontWeight: '800',
+    color: '#10B981',
+    marginBottom: '16px',
+    position: 'relative',
   },
-  confidence: { fontSize: "16px", color: "#4a5568", marginBottom: "6px" },
-  modelUsed: { fontSize: "13px", color: "#a0aec0", marginBottom: "20px" },
+
+  /* Confidence */
+  confidenceWrap: {
+    maxWidth: '300px',
+    margin: '0 auto 16px',
+    position: 'relative',
+  },
+  confidenceLabel: {
+    fontSize: '14px',
+    color: '#9CA3AF',
+    marginBottom: '8px',
+  },
+  confidenceBarBg: {
+    width: '100%',
+    height: '6px',
+    background: '#1F2937',
+    borderRadius: '3px',
+    overflow: 'hidden',
+  },
+  confidenceBar: {
+    height: '100%',
+    background: 'linear-gradient(90deg, #10B981, #34D399)',
+    borderRadius: '3px',
+    transition: 'width 0.5s ease',
+  },
+
+  modelUsed: {
+    fontSize: '13px',
+    color: '#6B7280',
+    marginBottom: '24px',
+    position: 'relative',
+  },
   resetBtn: {
-    padding: "10px 24px",
-    background: "#edf2f7",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-    color: "#4a5568",
+    padding: '10px 28px',
+    background: '#1E293B',
+    border: '1px solid #1F2937',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontWeight: '600',
+    color: '#9CA3AF',
+    fontSize: '14px',
+    transition: 'all 0.2s',
+    position: 'relative',
+  },
+
+  /* Empty state */
+  emptyState: {
+    textAlign: 'center',
+    padding: '64px 24px',
+    background: '#111827',
+    borderRadius: '12px',
+    border: '1px solid #1F2937',
+    maxWidth: '500px',
+    margin: '60px auto',
+  },
+  emptyIcon: { fontSize: '48px', marginBottom: '16px' },
+  emptyTitle: { fontSize: '18px', fontWeight: '600', color: '#E5E7EB', marginBottom: '8px' },
+  emptyDesc: { fontSize: '14px', color: '#6B7280', marginBottom: '4px' },
+  actionBtn: {
+    marginTop: '16px',
+    padding: '10px 24px',
+    background: '#10B981',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
   },
 };
 

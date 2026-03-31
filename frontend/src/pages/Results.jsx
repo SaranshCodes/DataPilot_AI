@@ -9,63 +9,70 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import DashboardLayout from "../components/DashboardLayout";
+import { HiOutlineCheckCircle } from "react-icons/hi";
+
+const pipelineSteps = [
+  { label: 'Dataset Loaded', icon: '📁' },
+  { label: 'Feature Processing', icon: '⚙️' },
+  { label: 'Model Training', icon: '🧠' },
+  { label: 'Evaluation', icon: '✅' },
+];
 
 function Results() {
   const navigate = useNavigate();
   const trainResult = JSON.parse(localStorage.getItem("trainResult") || "null");
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  // If no results found redirect back to upload
   if (!trainResult) {
-    navigate("/upload");
-    return null;
+    return (
+      <DashboardLayout>
+        <div style={styles.emptyState}>
+          <div style={styles.emptyIcon}>🧠</div>
+          <p style={styles.emptyTitle}>No training results yet</p>
+          <p style={styles.emptyDesc}>Train a model first to see the results here</p>
+          <button style={styles.actionBtn} onClick={() => navigate('/upload')}>
+            Go to Upload
+          </button>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   const { results, best_model, task, job_id } = trainResult;
 
-  // Pick the right metric to display based on task type
   const isClassification = task === "classification";
   const metricKey = isClassification ? "accuracy" : "r2";
   const metricLabel = isClassification ? "Accuracy %" : "R² Score";
 
-  // Colors for chart bars — best model gets green, rest get blue
   const getColor = (entry) =>
-    entry.model === best_model ? "#38a169" : "#4299e1";
-
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/");
-  };
+    entry.model === best_model ? "#10B981" : "#3B82F6";
 
   return (
-    <div style={styles.page}>
-      {/* Navbar */}
-      <div style={styles.nav}>
-        <span style={styles.navLogo}>🚀 DataPilot AI</span>
-        <div style={styles.navRight}>
-          <button style={styles.navBtn} onClick={() => navigate("/upload")}>
-            New Dataset
-          </button>
-          <button style={styles.navBtn} onClick={() => navigate("/predict")}>
-            Make Prediction
-          </button>
-          <span style={styles.navEmail}>{user.email}</span>
-          <button style={styles.logoutBtn} onClick={handleLogout}>
-            Logout
-          </button>
+    <DashboardLayout>
+      <div style={styles.wrapper}>
+        <div style={styles.header}>
+          <h2 style={styles.heading}>Training Complete 🎉</h2>
+          <p style={styles.subheading}>
+            Task: <strong style={{ color: '#E5E7EB' }}>{task}</strong> · Best Model:{" "}
+            <strong style={{ color: "#10B981" }}>{best_model}</strong> · Job ID:{" "}
+            <code style={styles.code}>{job_id}</code>
+          </p>
         </div>
-      </div>
 
-      <div style={styles.content}>
-        {/* Header */}
-        <h2 style={styles.heading}>Training Complete 🎉</h2>
-        <p style={styles.subheading}>
-          Task: <strong>{task}</strong> | Best Model:{" "}
-          <strong style={{ color: "#38a169" }}>{best_model}</strong> | Job ID:{" "}
-          <code>{job_id}</code>
-        </p>
+        {/* Pipeline steps */}
+        <div style={styles.stepsBar}>
+          {pipelineSteps.map((step, i) => (
+            <div key={step.label} style={styles.stepItem}>
+              <div style={styles.stepIcon}>
+                <HiOutlineCheckCircle size={20} color="#10B981" />
+              </div>
+              <span style={styles.stepLabel}>{step.label}</span>
+              {i < pipelineSteps.length - 1 && <div style={styles.stepLine} />}
+            </div>
+          ))}
+        </div>
 
-        {/* Best model highlight card */}
+        {/* Best model highlight */}
         <div style={styles.bestCard}>
           <div>
             <div style={styles.bestLabel}>🏆 Best Model</div>
@@ -78,6 +85,40 @@ function Results() {
           </div>
         </div>
 
+        {/* Model cards grid */}
+        <div style={styles.modelGrid}>
+          {results.map((r, i) => {
+            const isBest = r.model === best_model;
+            return (
+              <div key={i} style={{
+                ...styles.modelCard,
+                ...(isBest ? styles.modelCardBest : {}),
+              }}>
+                {isBest && <div style={styles.bestBadge}>Best Model</div>}
+                <div style={styles.modelName}>{r.model}</div>
+                <div style={styles.modelMetric}>
+                  <span style={styles.modelMetricVal}>
+                    {r[metricKey]}{isClassification ? '%' : ''}
+                  </span>
+                  <span style={styles.modelMetricLabel}>{metricLabel}</span>
+                </div>
+                {isClassification && (
+                  <div style={styles.modelSecondary}>
+                    <span>F1: {r.f1_score}</span>
+                    <span>AUC: {r.roc_auc}</span>
+                  </div>
+                )}
+                {!isClassification && (
+                  <div style={styles.modelSecondary}>
+                    <span>MAE: {r.mae}</span>
+                    <span>RMSE: {r.rmse}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
         {/* Bar chart */}
         <div style={styles.card}>
           <h3 style={styles.cardTitle}>Model Comparison</h3>
@@ -86,10 +127,11 @@ function Results() {
               data={results}
               margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#edf2f7" />
-              <XAxis dataKey="model" tick={{ fontSize: 12 }} />
-              <YAxis domain={[60, 100]} tick={{ fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
+              <XAxis dataKey="model" tick={{ fontSize: 12, fill: '#6B7280' }} axisLine={{ stroke: '#1F2937' }} />
+              <YAxis domain={isClassification ? [60, 100] : ['auto', 'auto']} tick={{ fontSize: 12, fill: '#6B7280' }} axisLine={{ stroke: '#1F2937' }} />
               <Tooltip
+                contentStyle={{ background: '#1E293B', border: '1px solid #1F2937', borderRadius: '8px', color: '#E5E7EB' }}
                 formatter={(val) => [
                   `${val}${isClassification ? "%" : ""}`,
                   metricLabel,
@@ -104,173 +146,291 @@ function Results() {
           </ResponsiveContainer>
         </div>
 
-        {/* Results table */}
+        {/* Detailed table */}
         <div style={styles.card}>
           <h3 style={styles.cardTitle}>Detailed Metrics</h3>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Rank</th>
-                <th style={styles.th}>Model</th>
-                {isClassification ? (
-                  <>
-                    <th style={styles.th}>Accuracy</th>
-                    <th style={styles.th}>F1 Score</th>
-                    <th style={styles.th}>ROC-AUC</th>
-                  </>
-                ) : (
-                  <>
-                    <th style={styles.th}>R²</th>
-                    <th style={styles.th}>MAE</th>
-                    <th style={styles.th}>RMSE</th>
-                  </>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {results.map((r, i) => (
-                <tr
-                  key={i}
-                  style={{ background: i % 2 === 0 ? "#fff" : "#f7fafc" }}
-                >
-                  <td style={styles.td}>{i === 0 ? "🏆" : i + 1}</td>
-                  <td
-                    style={{
-                      ...styles.td,
-                      fontWeight: i === 0 ? "700" : "400",
-                      color: i === 0 ? "#38a169" : "inherit",
-                    }}
-                  >
-                    {r.model}
-                  </td>
+          <div style={styles.tableWrap}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Rank</th>
+                  <th style={styles.th}>Model</th>
                   {isClassification ? (
                     <>
-                      <td style={styles.td}>{r.accuracy}%</td>
-                      <td style={styles.td}>{r.f1_score}</td>
-                      <td style={styles.td}>{r.roc_auc}</td>
+                      <th style={styles.th}>Accuracy</th>
+                      <th style={styles.th}>F1 Score</th>
+                      <th style={styles.th}>ROC-AUC</th>
                     </>
                   ) : (
                     <>
-                      <td style={styles.td}>{r.r2}</td>
-                      <td style={styles.td}>{r.mae}</td>
-                      <td style={styles.td}>{r.rmse}</td>
+                      <th style={styles.th}>R²</th>
+                      <th style={styles.th}>MAE</th>
+                      <th style={styles.th}>RMSE</th>
                     </>
                   )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {results.map((r, i) => (
+                  <tr
+                    key={i}
+                    style={{ background: i % 2 === 0 ? "#111827" : "#0F172A" }}
+                  >
+                    <td style={styles.td}>{i === 0 ? "🏆" : i + 1}</td>
+                    <td style={{
+                      ...styles.td,
+                      fontWeight: i === 0 ? "700" : "400",
+                      color: i === 0 ? "#10B981" : "#9CA3AF",
+                    }}>
+                      {r.model}
+                    </td>
+                    {isClassification ? (
+                      <>
+                        <td style={styles.td}>{r.accuracy}%</td>
+                        <td style={styles.td}>{r.f1_score}</td>
+                        <td style={styles.td}>{r.roc_auc}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={styles.td}>{r.r2}</td>
+                        <td style={styles.td}>{r.mae}</td>
+                        <td style={styles.td}>{r.rmse}</td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* Action button */}
+        {/* Action */}
         <button style={styles.predictBtn} onClick={() => navigate("/predict")}>
           🎯 Make Predictions with {best_model}
         </button>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
 
 const styles = {
-  page: { minHeight: "100vh", background: "#f0f4f8" },
-  nav: {
-    background: "#1a202c",
-    padding: "0 32px",
-    height: "60px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
+  wrapper: { maxWidth: '960px', margin: '0 auto' },
+  header: { marginBottom: '24px' },
+  heading: {
+    fontSize: '28px',
+    fontWeight: '700',
+    color: '#E5E7EB',
+    marginBottom: '6px',
+    letterSpacing: '-0.02em',
   },
-  navLogo: { color: "#fff", fontWeight: "700", fontSize: "18px" },
-  navRight: { display: "flex", alignItems: "center", gap: "12px" },
-  navBtn: {
-    background: "transparent",
-    border: "1px solid #4a5568",
-    color: "#a0aec0",
-    padding: "6px 14px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontSize: "13px",
+  subheading: { color: '#6B7280', fontSize: '14px' },
+  code: {
+    background: '#1E293B',
+    padding: '2px 8px',
+    borderRadius: '4px',
+    fontSize: '13px',
+    color: '#9CA3AF',
+    fontFamily: 'monospace',
   },
-  navEmail: { color: "#a0aec0", fontSize: "13px" },
-  logoutBtn: {
-    background: "transparent",
-    border: "1px solid #4a5568",
-    color: "#a0aec0",
-    padding: "6px 14px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontSize: "13px",
+
+  /* Pipeline steps */
+  stepsBar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0',
+    marginBottom: '28px',
+    padding: '20px 24px',
+    background: '#111827',
+    borderRadius: '12px',
+    border: '1px solid #1F2937',
+    flexWrap: 'wrap',
   },
-  content: { maxWidth: "860px", margin: "40px auto", padding: "0 20px" },
-  heading: { fontSize: "26px", fontWeight: "700", marginBottom: "6px" },
-  subheading: { color: "#718096", marginBottom: "24px", fontSize: "14px" },
+  stepItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  stepIcon: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  stepLabel: {
+    fontSize: '13px',
+    color: '#10B981',
+    fontWeight: '500',
+  },
+  stepLine: {
+    width: '40px',
+    height: '1px',
+    background: '#10B981',
+    margin: '0 12px',
+    opacity: 0.4,
+  },
+
+  /* Best card */
   bestCard: {
-    background: "linear-gradient(135deg, #38a169, #276749)",
-    borderRadius: "12px",
-    padding: "24px 28px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "20px",
+    background: 'linear-gradient(135deg, #065F46, #064E3B)',
+    border: '1px solid rgba(16,185,129,0.3)',
+    borderRadius: '12px',
+    padding: '28px 32px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '24px',
+    boxShadow: '0 0 40px rgba(16,185,129,0.1)',
   },
   bestLabel: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: "13px",
-    marginBottom: "4px",
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: '13px',
+    marginBottom: '4px',
   },
-  bestName: { color: "#fff", fontSize: "22px", fontWeight: "700" },
+  bestName: { color: '#fff', fontSize: '22px', fontWeight: '700' },
   bestScore: {
-    color: "#fff",
-    fontSize: "36px",
-    fontWeight: "800",
-    textAlign: "right",
+    color: '#fff',
+    fontSize: '36px',
+    fontWeight: '800',
+    textAlign: 'right',
   },
   bestScoreLabel: {
-    fontSize: "12px",
-    color: "rgba(255,255,255,0.8)",
-    fontWeight: "400",
+    fontSize: '12px',
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '400',
   },
+
+  /* Model cards */
+  modelGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+    gap: '16px',
+    marginBottom: '24px',
+  },
+  modelCard: {
+    background: '#111827',
+    border: '1px solid #1F2937',
+    borderRadius: '12px',
+    padding: '20px',
+    position: 'relative',
+    transition: 'all 0.2s',
+  },
+  modelCardBest: {
+    borderColor: '#10B981',
+    boxShadow: '0 0 20px rgba(16,185,129,0.1)',
+  },
+  bestBadge: {
+    position: 'absolute',
+    top: '-10px',
+    right: '16px',
+    background: '#10B981',
+    color: '#fff',
+    fontSize: '10px',
+    fontWeight: '700',
+    padding: '3px 10px',
+    borderRadius: '9999px',
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+  },
+  modelName: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#E5E7EB',
+    marginBottom: '12px',
+  },
+  modelMetric: {
+    marginBottom: '8px',
+  },
+  modelMetricVal: {
+    fontSize: '24px',
+    fontWeight: '800',
+    color: '#10B981',
+  },
+  modelMetricLabel: {
+    fontSize: '11px',
+    color: '#6B7280',
+    marginLeft: '6px',
+  },
+  modelSecondary: {
+    display: 'flex',
+    gap: '12px',
+    fontSize: '12px',
+    color: '#6B7280',
+  },
+
+  /* Card */
   card: {
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "24px",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-    marginBottom: "20px",
+    background: '#111827',
+    borderRadius: '12px',
+    padding: '24px',
+    border: '1px solid #1F2937',
+    marginBottom: '20px',
   },
   cardTitle: {
-    fontSize: "16px",
-    fontWeight: "600",
-    marginBottom: "16px",
-    color: "#2d3748",
+    fontSize: '16px',
+    fontWeight: '600',
+    marginBottom: '16px',
+    color: '#E5E7EB',
   },
-  table: { width: "100%", borderCollapse: "collapse" },
+
+  /* Table */
+  tableWrap: { overflowX: 'auto' },
+  table: { width: '100%', borderCollapse: 'collapse' },
   th: {
-    padding: "10px 16px",
-    background: "#f7fafc",
-    textAlign: "left",
-    fontSize: "12px",
-    fontWeight: "600",
-    color: "#4a5568",
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
+    padding: '12px 16px',
+    background: '#0F172A',
+    textAlign: 'left',
+    fontSize: '11px',
+    fontWeight: '600',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+    borderBottom: '1px solid #1F2937',
   },
   td: {
-    padding: "12px 16px",
-    fontSize: "14px",
-    borderBottom: "1px solid #edf2f7",
+    padding: '12px 16px',
+    fontSize: '13px',
+    color: '#9CA3AF',
+    borderBottom: '1px solid #1F2937',
   },
+
+  /* Predict button */
   predictBtn: {
-    width: "100%",
-    padding: "16px",
-    background: "#3182ce",
-    color: "#fff",
-    border: "none",
-    borderRadius: "10px",
-    fontSize: "16px",
-    fontWeight: "600",
-    cursor: "pointer",
-    marginTop: "8px",
+    width: '100%',
+    padding: '16px',
+    background: '#10B981',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '10px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    boxShadow: '0 0 20px rgba(16,185,129,0.15)',
+    marginTop: '4px',
+  },
+
+  /* Empty state */
+  emptyState: {
+    textAlign: 'center',
+    padding: '64px 24px',
+    background: '#111827',
+    borderRadius: '12px',
+    border: '1px solid #1F2937',
+    maxWidth: '500px',
+    margin: '60px auto',
+  },
+  emptyIcon: { fontSize: '48px', marginBottom: '16px' },
+  emptyTitle: { fontSize: '18px', fontWeight: '600', color: '#E5E7EB', marginBottom: '8px' },
+  emptyDesc: { fontSize: '14px', color: '#6B7280', marginBottom: '4px' },
+  actionBtn: {
+    marginTop: '16px',
+    padding: '10px 24px',
+    background: '#10B981',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
   },
 };
 

@@ -1,6 +1,8 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import client from "../api/client";
+import DashboardLayout from "../components/DashboardLayout";
+import { HiOutlineCloudUpload, HiOutlineExclamationCircle, HiOutlineDocument } from "react-icons/hi";
 
 function Upload() {
   const [file, setFile] = useState(null);
@@ -13,12 +15,14 @@ function Upload() {
   const [dragOver, setDragOver] = useState(false);
   const fileInput = useRef(null);
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  // Handle file selected (via click or drag)
   const handleFile = async (selectedFile) => {
     if (!selectedFile?.name.endsWith(".csv")) {
-      setError("Please uplaod a CSV file");
+      setError("Please upload a CSV file");
+      return;
+    }
+    if (selectedFile.size > 16 * 1024 * 1024) {
+      setError("File size exceeds 16 MB limit. Please upload a smaller file.");
       return;
     }
     setFile(selectedFile);
@@ -39,7 +43,7 @@ function Upload() {
       setLoading(false);
     }
   };
-  //Starting training with selected target column
+
   const handleTrain = async () => {
     if (!targetCol) {
       setError("Please select a target column");
@@ -54,7 +58,6 @@ function Upload() {
         filename: uploadData.filename,
         target_col: targetCol,
       });
-      // Save results to localStorage so Results Page can read them
       localStorage.setItem("trainResult", JSON.stringify(res.data));
       navigate("/results");
     } catch (err) {
@@ -62,32 +65,27 @@ function Upload() {
       setTraining(false);
     }
   };
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/");
-  };
 
   return (
-    <div style={styles.page}>
-      {/* Navbar */}
-      <div style={styles.nav}>
-        <span style={styles.navLogo}>🚀 DataPilot AI</span>
-        <div style={styles.navRight}>
-          <span style={styles.navEmail}>{user.email}</span>
-          <button style={styles.logoutBtn} onClick={handleLogout}>
-            Logout
-          </button>
+    <DashboardLayout>
+      <div style={styles.wrapper}>
+        <div style={styles.header}>
+          <h2 style={styles.heading}>Upload Your Dataset</h2>
+          <p style={styles.subheading}>
+            Upload a CSV file and we'll automatically train ML models for you
+          </p>
         </div>
-      </div>
 
-      {/* Main content */}
-      <div style={styles.content}>
-        <h2 style={styles.heading}>Upload Your Dataset</h2>
-        <p style={styles.subheading}>
-          Upload a CSV and we'll automatically train ML models for you
-        </p>
-
-        {error && <div style={styles.error}>{error}</div>}
+        {/* Error alert */}
+        {error && (
+          <div style={styles.error}>
+            <HiOutlineExclamationCircle size={18} style={{ flexShrink: 0, marginTop: '1px' }} />
+            <div>
+              <div style={styles.errorTitle}>Error</div>
+              <div>{error}</div>
+            </div>
+          </div>
+        )}
 
         {/* Drop zone */}
         <div
@@ -95,16 +93,9 @@ function Upload() {
             ...styles.dropzone,
             ...(dragOver ? styles.dropzoneActive : {}),
           }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragOver(false);
-            handleFile(e.dataTransfer.files[0]);
-          }}
+          onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]); }}
           onClick={() => fileInput.current.click()}
         >
           <input
@@ -114,45 +105,54 @@ function Upload() {
             style={{ display: "none" }}
             onChange={(e) => handleFile(e.target.files[0])}
           />
-          <div style={styles.dropIcon}>📂</div>
+          <div style={styles.dropIconBox}>
+            <HiOutlineCloudUpload size={32} color="#10B981" />
+          </div>
           {loading ? (
-            <p>Uploading and running EDA...</p>
+            <div>
+              <div style={styles.spinner} />
+              <p style={styles.dropText}>Uploading and running EDA...</p>
+            </div>
           ) : file ? (
-            <p>
-              <strong>{file.name}</strong> — click to change
-            </p>
+            <div style={styles.filePreview}>
+              <HiOutlineDocument size={20} color="#10B981" />
+              <span style={styles.fileName}>{file.name}</span>
+              <span style={styles.fileSize}>
+                ({(file.size / 1024).toFixed(1)} KB)
+              </span>
+            </div>
           ) : (
-            <p>
-              Drag & drop a CSV file here, or <strong>click to browse</strong>
-            </p>
+            <>
+              <p style={styles.dropText}>
+                Drag & drop a CSV file here, or <span style={styles.dropLink}>click to browse</span>
+              </p>
+              <p style={styles.dropHint}>Maximum file size: 16 MB</p>
+            </>
           )}
         </div>
 
+        {/* EDA button */}
         {uploadData && (
-          <div style={{ textAlign: "right", marginBottom: "12px" }}>
-            <button
-              style={{
-                padding: "8px 18px",
-                background: "#805ad5",
-                color: "#fff",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontSize: "13px",
-                fontWeight: "600",
-              }}
-              onClick={() => navigate("/eda")}
-            >
-              📊 Explore Data
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+            <button style={styles.edaBtn} onClick={() => navigate("/eda")}>
+              <HiOutlineDocument size={16} />
+              Explore Data (EDA)
             </button>
           </div>
         )}
-        {/* Column selector */}
+
+        {/* Column selector + Train */}
         {columns.length > 0 && (
           <div style={styles.card}>
-            <h3 style={styles.cardTitle}>
-              Dataset loaded — {uploadData.rows} rows, {columns.length} columns
-            </h3>
+            <div style={styles.cardHeader}>
+              <h3 style={styles.cardTitle}>
+                Dataset Loaded
+              </h3>
+              <span style={styles.cardBadge}>
+                {uploadData.rows} rows · {columns.length} columns
+              </span>
+            </div>
+
             <label style={styles.label}>Select target column to predict:</label>
             <select
               style={styles.select}
@@ -161,11 +161,10 @@ function Upload() {
             >
               <option value="">-- Choose column --</option>
               {columns.map((col) => (
-                <option key={col} value={col}>
-                  {col}
-                </option>
+                <option key={col} value={col}>{col}</option>
               ))}
             </select>
+
             <div style={styles.colGrid}>
               {columns.map((col) => (
                 <span
@@ -180,125 +179,283 @@ function Upload() {
                 </span>
               ))}
             </div>
+
             <button
-              style={{ ...styles.trainBtn, opacity: training ? 0.7 : 1 }}
+              style={{
+                ...styles.trainBtn,
+                opacity: training ? 0.7 : 1,
+                cursor: training ? 'not-allowed' : 'pointer',
+              }}
               onClick={handleTrain}
               disabled={training}
             >
-              {training
-                ? "⏳ Training models... this may take 30-60 seconds"
-                : "🚀 Start AutoML Training"}
+              {training ? (
+                <span style={styles.trainLoading}>
+                  <div style={styles.spinnerSmall} />
+                  Training models... this may take 30–60 seconds
+                </span>
+              ) : (
+                "⚡ Start AutoML Training"
+              )}
             </button>
           </div>
         )}
+
+        {/* Empty state */}
+        {!file && !loading && (
+          <div style={styles.emptyState}>
+            <div style={styles.emptyIcon}>📁</div>
+            <p style={styles.emptyTitle}>No dataset uploaded yet</p>
+            <p style={styles.emptyDesc}>Upload a CSV file to get started with automated machine learning</p>
+          </div>
+        )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
 
 const styles = {
-  page: { minHeight: "100vh", background: "#f0f4f8" },
-  nav: {
-    background: "#1a202c",
-    padding: "0 32px",
-    height: "60px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
+  wrapper: {
+    maxWidth: '780px',
+    margin: '0 auto',
   },
-  navLogo: { color: "#fff", fontWeight: "700", fontSize: "18px" },
-  navRight: { display: "flex", alignItems: "center", gap: "16px" },
-  navEmail: { color: "#a0aec0", fontSize: "13px" },
-  logoutBtn: {
-    background: "transparent",
-    border: "1px solid #4a5568",
-    color: "#a0aec0",
-    padding: "6px 14px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontSize: "13px",
+  header: {
+    marginBottom: '28px',
   },
-  content: { maxWidth: "720px", margin: "40px auto", padding: "0 20px" },
-  heading: { fontSize: "26px", fontWeight: "700", marginBottom: "6px" },
-  subheading: { color: "#718096", marginBottom: "24px" },
+  heading: {
+    fontSize: '28px',
+    fontWeight: '700',
+    color: '#E5E7EB',
+    marginBottom: '6px',
+    letterSpacing: '-0.02em',
+  },
+  subheading: {
+    color: '#6B7280',
+    fontSize: '15px',
+  },
   error: {
-    background: "#fff5f5",
-    color: "#c53030",
-    padding: "10px 14px",
-    borderRadius: "8px",
-    marginBottom: "16px",
-    fontSize: "13px",
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '12px',
+    background: '#1C1017',
+    borderLeft: '3px solid #EF4444',
+    color: '#FCA5A5',
+    padding: '14px 18px',
+    borderRadius: '8px',
+    marginBottom: '20px',
+    fontSize: '13px',
+    lineHeight: '1.5',
   },
+  errorTitle: {
+    fontWeight: '600',
+    color: '#F87171',
+    marginBottom: '2px',
+    fontSize: '14px',
+  },
+
+  /* Dropzone */
   dropzone: {
-    border: "2px dashed #cbd5e0",
-    borderRadius: "12px",
-    padding: "48px 20px",
-    textAlign: "center",
-    cursor: "pointer",
-    background: "#fff",
-    marginBottom: "24px",
-    transition: "all 0.2s",
+    border: '2px dashed #1F2937',
+    borderRadius: '12px',
+    padding: '48px 24px',
+    textAlign: 'center',
+    cursor: 'pointer',
+    background: '#111827',
+    marginBottom: '20px',
+    transition: 'all 0.3s ease',
   },
-  dropzoneActive: { borderColor: "#3182ce", background: "#ebf8ff" },
-  dropIcon: { fontSize: "36px", marginBottom: "12px" },
+  dropzoneActive: {
+    borderColor: '#10B981',
+    background: 'rgba(16,185,129,0.05)',
+    boxShadow: '0 0 30px rgba(16,185,129,0.1)',
+  },
+  dropIconBox: {
+    width: '64px',
+    height: '64px',
+    borderRadius: '16px',
+    background: 'rgba(16,185,129,0.1)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: '0 auto 16px',
+  },
+  dropText: {
+    color: '#9CA3AF',
+    fontSize: '15px',
+    marginBottom: '8px',
+  },
+  dropLink: {
+    color: '#10B981',
+    fontWeight: '600',
+  },
+  dropHint: {
+    color: '#6B7280',
+    fontSize: '12px',
+  },
+  filePreview: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+    background: 'rgba(16,185,129,0.1)',
+    border: '1px solid rgba(16,185,129,0.2)',
+    padding: '10px 20px',
+    borderRadius: '8px',
+  },
+  fileName: {
+    color: '#E5E7EB',
+    fontWeight: '600',
+    fontSize: '14px',
+  },
+  fileSize: {
+    color: '#6B7280',
+    fontSize: '12px',
+  },
+  spinner: {
+    width: '32px',
+    height: '32px',
+    border: '3px solid #1F2937',
+    borderTop: '3px solid #10B981',
+    borderRadius: '50%',
+    animation: 'spin 0.8s linear infinite',
+    margin: '0 auto 12px',
+  },
+
+  /* EDA button */
+  edaBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '8px 18px',
+    background: 'transparent',
+    border: '1px solid #10B981',
+    color: '#10B981',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '600',
+    transition: 'all 0.2s',
+  },
+
+  /* Card */
   card: {
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "24px",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+    background: '#111827',
+    borderRadius: '12px',
+    padding: '28px',
+    border: '1px solid #1F2937',
+  },
+  cardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '20px',
+    flexWrap: 'wrap',
+    gap: '8px',
   },
   cardTitle: {
-    fontSize: "16px",
-    fontWeight: "600",
-    marginBottom: "16px",
-    color: "#2d3748",
+    fontSize: '17px',
+    fontWeight: '600',
+    color: '#E5E7EB',
+  },
+  cardBadge: {
+    fontSize: '12px',
+    color: '#10B981',
+    background: 'rgba(16,185,129,0.1)',
+    padding: '4px 12px',
+    borderRadius: '9999px',
+    fontWeight: '500',
   },
   label: {
-    display: "block",
-    fontSize: "13px",
-    fontWeight: "600",
-    color: "#4a5568",
-    marginBottom: "8px",
+    display: 'block',
+    fontSize: '13px',
+    fontWeight: '500',
+    color: '#9CA3AF',
+    marginBottom: '8px',
   },
   select: {
-    width: "100%",
-    padding: "10px 14px",
-    border: "1.5px solid #e2e8f0",
-    borderRadius: "8px",
-    fontSize: "14px",
-    marginBottom: "16px",
-    outline: "none",
+    width: '100%',
+    padding: '11px 14px',
+    background: '#1E293B',
+    border: '1.5px solid #1F2937',
+    borderRadius: '8px',
+    fontSize: '14px',
+    color: '#E5E7EB',
+    marginBottom: '16px',
+    outline: 'none',
+    cursor: 'pointer',
+    transition: 'border-color 0.2s',
   },
   colGrid: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "8px",
-    marginBottom: "20px",
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    marginBottom: '24px',
   },
   colBadge: {
-    padding: "4px 12px",
-    background: "#edf2f7",
-    borderRadius: "20px",
-    fontSize: "12px",
-    cursor: "pointer",
-    border: "1.5px solid transparent",
+    padding: '5px 14px',
+    background: '#1E293B',
+    borderRadius: '9999px',
+    fontSize: '12px',
+    color: '#9CA3AF',
+    cursor: 'pointer',
+    border: '1.5px solid transparent',
+    transition: 'all 0.2s',
   },
   colBadgeActive: {
-    background: "#ebf8ff",
-    borderColor: "#3182ce",
-    color: "#3182ce",
-    fontWeight: "600",
+    background: 'rgba(16,185,129,0.1)',
+    borderColor: '#10B981',
+    color: '#10B981',
+    fontWeight: '600',
   },
   trainBtn: {
-    width: "100%",
-    padding: "14px",
-    background: "#38a169",
-    color: "#fff",
-    border: "none",
-    borderRadius: "8px",
-    fontSize: "15px",
-    fontWeight: "600",
-    cursor: "pointer",
+    width: '100%',
+    padding: '14px',
+    background: '#10B981',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '15px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    boxShadow: '0 0 20px rgba(16,185,129,0.15)',
+  },
+  trainLoading: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '10px',
+  },
+  spinnerSmall: {
+    width: '18px',
+    height: '18px',
+    border: '2px solid rgba(255,255,255,0.3)',
+    borderTop: '2px solid #fff',
+    borderRadius: '50%',
+    animation: 'spin 0.8s linear infinite',
+  },
+
+  /* Empty state */
+  emptyState: {
+    textAlign: 'center',
+    padding: '48px 20px',
+    background: '#111827',
+    borderRadius: '12px',
+    border: '1px solid #1F2937',
+    marginTop: '20px',
+  },
+  emptyIcon: {
+    fontSize: '40px',
+    marginBottom: '12px',
+  },
+  emptyTitle: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#E5E7EB',
+    marginBottom: '6px',
+  },
+  emptyDesc: {
+    fontSize: '13px',
+    color: '#6B7280',
   },
 };
 
