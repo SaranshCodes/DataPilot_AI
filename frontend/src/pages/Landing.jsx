@@ -52,12 +52,6 @@ export default function Landing() {
           </div>
           <div style={styles.navActions}>
             <button
-              style={styles.navLoginBtn}
-              onClick={() => navigate('/login')}
-            >
-              Login
-            </button>
-            <button
               style={styles.navGetStartedBtn}
               onClick={() => navigate('/login')}
             >
@@ -82,7 +76,7 @@ export default function Landing() {
           </h1>
           <p style={styles.heroSubtitle}>
             Upload any CSV, get automated EDA, train 5 ML models with one click,
-            and make instant predictions — all in a beautiful dark dashboard.
+            and make instant predictions.
           </p>
           <div style={styles.heroCtas}>
             <button

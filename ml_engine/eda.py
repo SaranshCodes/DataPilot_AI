@@ -120,7 +120,7 @@ def run_eda(csv_path, target_col=None):
    
     if len(numeric_cols) >= 2:
         corr = df[numeric_cols].corr()
-        fig = plt.figure(figsize=(8, 6))
+        fig = plt.figure(figsize=(15,15))
         ax = fig.add_subplot(111)
         sns.heatmap(corr, annot=True, fmt='.2f', cmap='coolwarm',
                     ax=ax, linewidths=0.5, cbar=True)

@@ -1,9 +1,11 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
-import { HiOutlineExclamationCircle } from 'react-icons/hi';
+import { HiOutlineExclamationCircle, HiOutlineX } from 'react-icons/hi';
 
 function EDA() {
     const navigate = useNavigate();
+    const [selectedChart, setSelectedChart] = useState(null);
     const uploadData = JSON.parse(localStorage.getItem('uploadData') || 'null');
 
     if (!uploadData) {
@@ -124,9 +126,18 @@ function EDA() {
           {/* Charts */}
           <div style={styles.card}>
             <h3 style={styles.cardTitle}>📈 Visualizations</h3>
+            <p style={{ fontSize: '13px', color: '#9CA3AF', marginBottom: '16px', marginTop: '-8px' }}>
+              Click on a chart to enlarge it
+            </p>
             <div style={styles.chartGrid}>
               {Object.entries(charts).map(([name, b64]) => (
-                <div key={name} style={styles.chartBox}>
+                <div 
+                  key={name} 
+                  style={{ ...styles.chartBox, cursor: 'zoom-in', transition: 'transform 0.2s ease-in-out' }}
+                  onClick={() => setSelectedChart({ name, b64 })}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                >
                   <div style={styles.chartName}>
                     {name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                   </div>
@@ -169,6 +180,29 @@ function EDA() {
             </button>
           </div>
         </div>
+
+        {/* Modal for Chart Zoom */}
+        {selectedChart && (
+          <div style={styles.modalOverlay} onClick={() => setSelectedChart(null)}>
+            <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+              <div style={styles.modalHeader}>
+                <h3 style={styles.modalTitle}>
+                  {selectedChart.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </h3>
+                <button style={styles.closeBtn} onClick={() => setSelectedChart(null)}>
+                  <HiOutlineX size={24} />
+                </button>
+              </div>
+              <div style={styles.modalImgWrapper}>
+                <img
+                  src={`data:image/png;base64,${selectedChart.b64}`}
+                  alt={selectedChart.name}
+                  style={styles.modalImg}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </DashboardLayout>
     );
 }
@@ -369,6 +403,77 @@ const styles = {
   emptyIcon: { fontSize: '48px', marginBottom: '16px' },
   emptyTitle: { fontSize: '18px', fontWeight: '600', color: '#E5E7EB', marginBottom: '8px' },
   emptyDesc: { fontSize: '14px', color: '#6B7280', marginBottom: '4px' },
+
+  /* Modal */
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0, 0, 0, 0.75)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
+    padding: '40px',
+    backdropFilter: 'blur(4px)',
+  },
+  modalContent: {
+    background: '#0F172A',
+    borderRadius: '12px',
+    maxWidth: '90%',
+    width: '1000px',
+    maxHeight: '90vh',
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+    border: '1px solid #1F2937',
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '16px 20px',
+    borderBottom: '1px solid #1F2937',
+    background: '#0B1220',
+  },
+  modalTitle: {
+    color: '#E5E7EB',
+    fontSize: '18px',
+    fontWeight: '600',
+    margin: 0,
+  },
+  closeBtn: {
+    background: 'transparent',
+    border: '1px solid #1F2937',
+    color: '#9CA3AF',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '6px',
+    borderRadius: '8px',
+    transition: 'all 0.2s',
+  },
+  modalImgWrapper: {
+    padding: '24px',
+    overflowY: 'auto',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    background: '#111827',
+  },
+  modalImg: {
+    maxWidth: '100%',
+    maxHeight: 'calc(90vh - 120px)',
+    objectFit: 'contain',
+    display: 'block',
+    border: '1px solid #1F2937',
+    borderRadius: '8px',
+    background: '#fff',
+  },
 };
 
 export default EDA;

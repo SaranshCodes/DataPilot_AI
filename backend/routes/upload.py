@@ -52,3 +52,34 @@ def upload_file():
         'columns': df.columns.tolist(),
         'eda': eda_result,
     }),200
+
+@upload_bp.route('/update_eda', methods=['POST'])
+def update_eda():
+    '''
+    Re-runs EDA when a target column is selected on the frontend
+    so that the target distribution chart is generated.
+    '''
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+        
+    filename = data.get('filename')
+    target_col = data.get('target_col')
+    
+    if not filename:
+        return jsonify({'error': 'Filename is required'}), 400
+        
+    upload_dir = current_app.config['UPLOAD_FOLDER']
+    csv_path = os.path.join(upload_dir, filename)
+    
+    if not os.path.exists(csv_path):
+        return jsonify({'error': 'CSV file not found on server'}), 400
+        
+    try:
+        eda_result = run_eda(csv_path, target_col=target_col)
+        return jsonify({
+            'status': 'success',
+            'eda': eda_result
+        }), 200
+    except Exception as e:
+        return jsonify({'error': f'Failed to update EDA: {str(e)}'}), 500

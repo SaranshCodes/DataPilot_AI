@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import client from "../api/client";
 import DashboardLayout from "../components/DashboardLayout";
@@ -15,6 +15,30 @@ function Upload() {
   const [dragOver, setDragOver] = useState(false);
   const fileInput = useRef(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (targetCol && uploadData?.filename) {
+      const fetchUpdatedEDA = async () => {
+        try {
+          const res = await client.post('/update_eda', {
+            filename: uploadData.filename,
+            target_col: targetCol
+          });
+          if (res.data?.status === 'success') {
+            setUploadData(prev => {
+              if (!prev) return prev;
+              const newData = { ...prev, eda: res.data.eda };
+              localStorage.setItem("uploadData", JSON.stringify(newData));
+              return newData;
+            });
+          }
+        } catch (err) {
+          console.error("Failed to fetch updated EDA:", err);
+        }
+      };
+      fetchUpdatedEDA();
+    }
+  }, [targetCol, uploadData?.filename]);
 
   const handleFile = async (selectedFile) => {
     if (!selectedFile?.name.endsWith(".csv")) {
