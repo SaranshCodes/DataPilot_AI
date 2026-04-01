@@ -79,7 +79,8 @@ export default function DashboardLayout({ children }) {
           })}
         </nav>
 
-        {/* Bottom section */}
+      
+       {/* Bottom section */}
         <div style={styles.sidebarBottom}>
           <div style={styles.sidebarDivider} />
           <button style={styles.logoutBtnSidebar} onClick={handleLogout}>
@@ -87,7 +88,8 @@ export default function DashboardLayout({ children }) {
             <span>Logout</span>
           </button>
         </div>
-      </aside>
+      </aside> 
+      
 
       {/* ── Main area ── */}
       <div style={styles.mainArea}>
@@ -107,9 +109,9 @@ export default function DashboardLayout({ children }) {
           <div style={styles.topbarRight}>
             <span style={styles.userEmail}>{user.email || 'user@example.com'}</span>
             <div style={styles.avatar}>{initials}</div>
-            <button style={styles.logoutBtnTopbar} onClick={handleLogout}>
+            {/*<button style={styles.logoutBtnTopbar} onClick={handleLogout}>
               Logout
-            </button>
+            </button> */}
           </div>
         </header>
 
