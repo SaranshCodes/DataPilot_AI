@@ -11,7 +11,8 @@ db= SQLAlchemy()
 bcrypt= Bcrypt()
 
 def create_app():
-    app= Flask(__name__)
+    # static_folder=None prevents Flask from hijacking /static/* requests
+    app= Flask(__name__, static_folder=None)
     app.config.from_object(Config)
     
     # Attach extensions to app
