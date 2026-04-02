@@ -16,7 +16,7 @@ class Config:
         
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    
+    DEBUG = os.getenv('DEBUG', 'False') == 'True'
     # FILE UPLOAD SETTINGS
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024 # 16 MB max file size
     UPLOAD_FOLDER = os.path.join(os.getcwd(), 'storage','uploads') # Upload folder path
