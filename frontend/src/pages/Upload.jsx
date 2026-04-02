@@ -219,7 +219,7 @@ function Upload() {
                   Training models... this may take 30–60 seconds
                 </span>
               ) : (
-                "⚡ Start AutoML Training"
+                "⚡ Start ML Training"
               )}
             </button>
           </div>
