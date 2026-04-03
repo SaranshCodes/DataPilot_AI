@@ -190,7 +190,7 @@ React runs on `http://localhost:3000`
 ```
 
 ---
-**Live Link** - https://datapilot-ai-o1r1.onrender.com
+**Live Link** - [https://datapilot-ai-o1r1.onrender.com](https://datapilot-ai-o1r1.onrender.com)
 
 ---
 
